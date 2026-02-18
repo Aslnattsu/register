@@ -54,3 +54,25 @@ button {
     display: flex; 
     justify-content: space-between; 
 }
+.modal {
+    display: none; /* 普段は隠す */
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); /* 背景を暗く */
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    width: 80%;
+    max-width: 300px;
+    text-align: center;
+}
+.modal-content button {
+    margin-top: 10px;
+    width: 100%;
+}
