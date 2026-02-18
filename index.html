@@ -13,7 +13,7 @@
 
     <div class="grid" id="buttonGrid"></div>
     
-    <div id="calcModal" class="modal">
+    <div id="calcModal" class="modal" style="display: none;">
     <div class="modal-content">
         <h3 id="calcTitle">自由入力</h3>
         <div id="calcDisplay" style="font-size: 32px; background: #eee; padding: 10px; margin-bottom: 10px; border-radius: 5px; text-align: right;">0</div>
@@ -39,7 +39,7 @@
     <button class="action-btn" onclick="addNewProduct()" style="background-color: #34c759;">＋ 新しい商品を追加</button>
     <button class="action-btn" onclick="clearData()">売上履歴をリセット</button>
 </div>
-<div id="editModal" class="modal">
+<div id="editModal" class="modal" style="display: none;">
     <div class="modal-content">
         <h3 id="editTitle">商品名の編集</h3>
         <button class="action-btn" onclick="openNameAndPriceEdit()" style="background-color: #007aff;">名前と価格を変更</button>
