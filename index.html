@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フリマレジ</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f0f2f5; }
+        .display { background: #fff; padding: 20px; border-radius: 10px; text-align: right; font-size: 24px; font-weight: bold; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { padding: 15px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .item-btn { background: #007aff; color: white; }
+        .item-btn:active { background: #0056b3; }
+        .action-btn { background: #ff3b30; color: white; grid-column: span 2; margin-top: 10px; }
+        .history { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; height: 150px; overflow-y: auto; }
+        .history-item { border-bottom: 1px solid #eee; padding: 5px 0; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+    <div class="display" id="totalDisplay">合計: ¥0</div>
+
+    <div class="grid">
+        <button class="item-btn" onclick="addItem('アクセサリ', 500)">アクセサリ<br>¥500</button>
+        <button class="item-btn" onclick="addItem('小物', 800)">小物<br>¥800</button>
+        <button class="item-btn" onclick="addItem('Tシャツ', 1500)">Tシャツ<br>¥1500</button>
+        <button class="item-btn" onclick="addItem('バッグ', 3000)">バッグ<br>¥3000</button>
+        
+        <button class="action-btn" onclick="clearData()">データをリセット</button>
+    </div>
+
+    <div class="history" id="historyList">
+        <strong>販売履歴</strong>
+    </div>
+
+    <script>
+        let total = 0;
+        let history = JSON.parse(localStorage.getItem('regiHistory')) || [];
+
+        // 起動時に保存データを復元
+        updateDisplay();
+
+        function addItem(name, price) {
+            const item = { name, price, time: new Date().toLocaleTimeString() };
+            history.push(item);
+            saveAndRender();
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('regiHistory', JSON.stringify(history));
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const listDiv = document.getElementById('historyList');
+            listDiv.innerHTML = '<strong>販売履歴</strong>';
+            
+            total = 0;
+            history.forEach((item, index) => {
+                total += item.price;
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `<span>${item.time} ${item.name}</span><span>¥${item.price}</span>`;
+                listDiv.prepend(div); // 新しいものを上に
+            });
+            
+            document.getElementById('totalDisplay').innerText = `合計: ¥${total.toLocaleString()}`;
+        }
+
+        function clearData() {
+            if(confirm('履歴を削除して合計をリセットしますか？')) {
+                history = [];
+                saveAndRender();
+            }
+        }
+    </script>
+</body>
+</html>
