@@ -46,7 +46,7 @@ function renderButtons() {
             editProduct(product.id);
         };
 
-        grid.appendChild(btn); 
+        grid.appendChild(btn);
     });
 }
 
