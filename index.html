@@ -13,6 +13,26 @@
 
     <div class="grid" id="buttonGrid"></div>
     
+    
+    
+    <div class="admin-controls" style="margin-top: 20px; display: grid; gap: 10px;">
+    <button class="action-btn" onclick="addNewProduct()" style="background-color: #34c759;">＋ 新しい商品を追加</button>
+    <button class="action-btn" onclick="clearData()">売上履歴をリセット</button>
+</div>
+
+
+    <div class="history" id="historyList">
+        <strong>販売履歴</strong>
+    </div>
+
+    <div id="editModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3 id="editTitle">商品名の編集</h3>
+        <button class="action-btn" onclick="openNameAndPriceEdit()" style="background-color: #007aff;">名前と価格を変更</button>
+        <button class="action-btn" onclick="deleteTargetProduct()" style="background-color: #ff3b30;">この商品を削除</button>
+        <button class="action-btn" onclick="closeModal()" style="background-color: #8e8e93;">キャンセル</button>
+    </div>
+</div>
     <div id="calcModal" class="modal" style="display: none;">
     <div class="modal-content">
         <h3 id="calcTitle">自由入力</h3>
@@ -34,23 +54,10 @@
         <button class="action-btn" onclick="closeCalc()" style="background: #8e8e93; margin-top: 5px;">閉じる</button>
     </div>
 </div>
-    
-    <div class="admin-controls" style="margin-top: 20px; display: grid; gap: 10px;">
-    <button class="action-btn" onclick="addNewProduct()" style="background-color: #34c759;">＋ 新しい商品を追加</button>
-    <button class="action-btn" onclick="clearData()">売上履歴をリセット</button>
-</div>
-<div id="editModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <h3 id="editTitle">商品名の編集</h3>
-        <button class="action-btn" onclick="openNameAndPriceEdit()" style="background-color: #007aff;">名前と価格を変更</button>
-        <button class="action-btn" onclick="deleteTargetProduct()" style="background-color: #ff3b30;">この商品を削除</button>
-        <button class="action-btn" onclick="closeModal()" style="background-color: #8e8e93;">キャンセル</button>
-    </div>
-</div>
 
-    <div class="history" id="historyList">
-        <strong>販売履歴</strong>
-    </div>
+<div id="appVersion" style="text-align: center; color: #8e8e93; font-size: 12px; margin: 20px 0;">
+    Version 1.0.1
+</div>
 
     <script src="script.js"></script>
 </body>
