@@ -41,6 +41,21 @@ function renderButtons() {
         // 通常クリック：商品追加
         btn.onclick = () => addItem(product.name, product.price);
 
+        // --- iPhone対応：長押しタイマーの実装 ---
+        let longPressTimer;
+
+        // 指が触れた時
+        btn.ontouchstart = (e) => {
+            longPressTimer = setTimeout(() => {
+                // 0.5秒間押し続けたら編集モード起動
+                editProduct(product.id);
+            }, 500); 
+        };
+
+        // 指が離れた、または動いた（スクロールした）時はキャンセル
+        btn.ontouchend = () => clearTimeout(longPressTimer);
+        btn.ontouchmove = () => clearTimeout(longPressTimer);
+
         // ★設定モード：右クリック（スマホなら長押し）で価格変更
         btn.oncontextmenu = (e) => {
             e.preventDefault(); // メニューが出るのを防ぐ
