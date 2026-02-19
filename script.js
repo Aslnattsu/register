@@ -17,17 +17,30 @@ const defaultData = {
     ]
 };
 
-// デフォルトの商品リスト
-//const defaultProducts = [
-//    { id: 1, name: "食品A", price: 500, color: "#007aff" },
-//    { id: 2, name: "食品B", price: 800, color: "#34c759" },
-//    { id: 3, name: "日用品A", price: 1500, color: "#ff9500" }
-//];
+// V2用の新しいキーで読み込む
+let rawData = localStorage.getItem('my_pos_v2');
+let allProducts;
+
+if (rawData) {
+    allProducts = JSON.parse(rawData);
+} else {
+    // もし古いデータ（配列）が残っていたら「基本」カテゴリに無理やり入れる
+    let oldData = localStorage.getItem('my_products');
+    if (oldData) {
+        allProducts = { "Aセット": JSON.parse(oldData) };
+    } else {
+        allProducts = defaultData;
+    }
+    // 新しい形式で即保存
+    localStorage.setItem('my_pos_v2', JSON.stringify(allProducts));
+}
+
+// アクティブなカテゴリをセット
+let activeCategory = Object.keys(allProducts)[0] || "Aセット";
 
 // 現在の商品リスト（保存されていればそれを読み込む）
-//let currentProducts = JSON.parse(localStorage.getItem('my_products')) || defaultProducts;
-let allProducts = JSON.parse(localStorage.getItem('my_pos_data')) || defaultData;
-let activeCategory = Object.keys(allProducts)[0]; // 最初は1つ目のカテゴリを表示
+//let allProducts = JSON.parse(localStorage.getItem('my_pos_v2')) || defaultData;
+//let activeCategory = Object.keys(allProducts)[0]; // 最初は1つ目のカテゴリを表示
 
 window.addEventListener('DOMContentLoaded', () => {
     renderTabs();
