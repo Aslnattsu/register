@@ -9,23 +9,25 @@
 </head>
 <body>
 
-    <div class="display" id="totalDisplay">合計: ¥0</div>
+<div class="display" id="totalDisplay">合計: ¥0</div>
 
-    <div class="grid" id="buttonGrid"></div>
+<div id="categoryTabs" class="tab-bar" style="display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;"></div>
+    
+<div class="grid" id="buttonGrid"></div>
     
     
     
-    <div class="admin-controls" style="margin-top: 20px; display: grid; gap: 10px;">
+<div class="admin-controls" style="margin-top: 20px; display: grid; gap: 10px;">
     <button class="action-btn" onclick="addNewProduct()" style="background-color: #34c759;">＋ 新しい商品を追加</button>
     <button class="action-btn" onclick="clearData()">売上履歴をリセット</button>
 </div>
 
 
-    <div class="history" id="historyList">
-        <strong>販売履歴</strong>
-    </div>
+<div class="history" id="historyList">
+    <strong>販売履歴</strong>
+</div>
 
-    <div id="editModal" class="modal" style="display: none;">
+<div id="editModal" class="modal" style="display: none;">
     <div class="modal-content">
         <h3 id="editTitle">商品名の編集</h3>
         <button class="action-btn" onclick="openNameAndPriceEdit()" style="background-color: #007aff;">名前と価格を変更</button>
@@ -33,7 +35,7 @@
         <button class="action-btn" onclick="closeModal()" style="background-color: #8e8e93;">キャンセル</button>
     </div>
 </div>
-    <div id="calcModal" class="modal" style="display: none;">
+<div id="calcModal" class="modal" style="display: none;">
     <div class="modal-content">
         <h3 id="calcTitle">自由入力</h3>
         <div id="calcDisplay" style="font-size: 32px; background: #eee; padding: 10px; margin-bottom: 10px; border-radius: 5px; text-align: right;">0</div>
@@ -55,8 +57,17 @@
     </div>
 </div>
 
+<div id="categoryModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3 id="categoryModalTitle">カテゴリの操作</h3>
+        <button class="action-btn" onclick="openCategoryRename()" style="background-color: #007aff;">名前を変更</button>
+        <button class="action-btn" onclick="deleteTargetCategory()" style="background-color: #ff3b30;">このカテゴリを削除</button>
+        <button class="action-btn" onclick="closeCategoryModal()" style="background-color: #8e8e93;">キャンセル</button>
+    </div>
+</div>
+
 <div id="appVersion" style="text-align: center; color: #8e8e93; font-size: 12px; margin: 20px 0;">
-    Version 1.0.3
+    Version 1.0.4
 </div>
 
     <script src="script.js"></script>

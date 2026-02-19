@@ -4,27 +4,107 @@ let editingId = null;
 let total = 0;
 let history = JSON.parse(localStorage.getItem('regiHistory')) || [];
 
+// 初期データ（カテゴリ分けした構造）
+const defaultData = {
+    "Aセット": [
+        { id: 1, name: "食品A", price: 500, color: "#007aff" },
+    ],
+    "Bセット": [
+        { id: 101, name: "食品A", price: 1000, color: "#ff9500" },
+    ],
+    "Cセット": [
+        { id: 201, name: "食品A", price: 300, color: "#34c759" },
+    ]
+};
+
 // デフォルトの商品リスト
-const defaultProducts = [
-    { id: 1, name: "食品A", price: 500, color: "#007aff" },
-    { id: 2, name: "食品B", price: 800, color: "#34c759" },
-    { id: 3, name: "日用品A", price: 1500, color: "#ff9500" }
-];
+//const defaultProducts = [
+//    { id: 1, name: "食品A", price: 500, color: "#007aff" },
+//    { id: 2, name: "食品B", price: 800, color: "#34c759" },
+//    { id: 3, name: "日用品A", price: 1500, color: "#ff9500" }
+//];
 
 // 現在の商品リスト（保存されていればそれを読み込む）
-let currentProducts = JSON.parse(localStorage.getItem('my_products')) || defaultProducts;
+//let currentProducts = JSON.parse(localStorage.getItem('my_products')) || defaultProducts;
+let allProducts = JSON.parse(localStorage.getItem('my_pos_data')) || defaultData;
+let activeCategory = Object.keys(allProducts)[0]; // 最初は1つ目のカテゴリを表示
 
 window.addEventListener('DOMContentLoaded', () => {
+    renderTabs();
     renderButtons();
     updateDisplay();
 });
+
+// タブを表示する
+function renderTabs() {
+    const tabContainer = document.getElementById('categoryTabs');
+    tabContainer.innerHTML = "";
+
+    Object.keys(allProducts).forEach(catName => {
+        const btn = document.createElement('button');
+        btn.className = `tab-btn ${catName === activeCategory ? 'active' : ''}`;
+        btn.innerText = catName;
+
+        // タップで切り替え
+        btn.onclick = () => {
+            activeCategory = catName;
+            renderTabs();
+            renderButtons();
+        };
+
+        // --- タブ名の変更（長押し） ---
+        let longPressTimer;
+        btn.ontouchstart = () => {
+            longPressTimer = setTimeout(() => {
+                editCategory(catName); // 名前変更関数を呼ぶ
+            }, 800); // タブは誤操作防止のため少し長めの800ms
+        };
+        btn.ontouchend = () => clearTimeout(longPressTimer);
+        btn.ontouchmove = () => clearTimeout(longPressTimer);
+        
+        // PC用（右クリック）
+        btn.oncontextmenu = (e) => {
+            e.preventDefault();
+            editCategory(catName);
+        };
+
+        tabContainer.appendChild(btn);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.className = 'tab-btn';
+    addBtn.innerText = "＋";
+    addBtn.onclick = () => {
+        const name = prompt("新しいカテゴリ名を入力してください");
+    
+        // 入力がない、またはキャンセルされたら何もしない
+        if (!name) return;
+
+        // すでに同じ名前があるかチェック（C#の ContainsKey 的な処理）
+        if (allProducts[name]) {
+            alert("その名前は既に使われています");
+            return;
+        }
+
+        // 1. 新しい空のカテゴリ（配列）を作成
+        allProducts[name] = []; 
+    
+        // 2. 作ったカテゴリをすぐに表示するように切り替え（UX向上）
+        activeCategory = name;
+
+        // 3. 保存して再描画
+        saveAllData();
+        renderTabs();
+        renderButtons();
+    };
+    tabContainer.appendChild(addBtn);
+}
 
 // ボタン生成
 function renderButtons() {
     const grid = document.getElementById('buttonGrid');
     grid.innerHTML = ""; // 再描画用に一旦空にする
     
-    // ★まず最初に「自由入力」ボタンを作る
+    // 自由入力ボタン
     const calcBtn = document.createElement('button');
     calcBtn.className = 'item-btn';
     calcBtn.style.backgroundColor = "#5856d6"; // 目立つ紫など
@@ -32,7 +112,11 @@ function renderButtons() {
     calcBtn.onclick = openCalc; // 電卓を開く
     grid.appendChild(calcBtn);
 
-    currentProducts.forEach(product => {
+    const targetProducts = allProducts[activeCategory];
+    targetProducts.forEach(product => {
+
+        if (!targetProducts) return;
+
         const btn = document.createElement('button');
         btn.className = 'item-btn';
         btn.style.backgroundColor = product.color;
@@ -69,8 +153,8 @@ function renderButtons() {
 // 商品編集（簡易版：プロンプトを使用）
 function editProduct(id) {
     editingId = id; // どの商品を編集するか覚えておく
-    const index = currentProducts.findIndex(p => p.id === id);
-    const product = currentProducts[index]
+    const index = allProducts[activeCategory].findIndex(p => p.id === id);
+    const product = allProducts[activeCategory][index]
 
     document.getElementById('editTitle').innerText = `「${product.name}」の操作`;
     
@@ -84,7 +168,7 @@ function closeModal() {
 //編集
 function openNameAndPriceEdit() {
     closeModal();
-    const product = currentProducts.find(p => p.id === editingId);
+    const product = allProducts[activeCategory].find(p => p.id === editingId);
 
     const newName = prompt(`${product.name} の名前を変更しますか？`, product.name);
     const newPrice = prompt(`${newName}の価格を入力してください`, product.price);
@@ -99,19 +183,19 @@ function openNameAndPriceEdit() {
         product.name = newName;
         product.price = checkPrice;
         
-        saveProducts();
+        saveAllData();
         renderButtons();
     }
 }
 //削除
 function deleteTargetProduct() {
     closeModal();
-    const index = currentProducts.findIndex(p => p.id === editingId);
-    const product = currentProducts[index];
+    const index = allProducts[activeCategory].findIndex(p => p.id === editingId);
+    const product = allProducts[activeCategory][index];
     
     if (confirm(`${product.name} を削除してよろしいですか？`)) {
-        currentProducts.splice(index, 1); // 配列から特定の要素を削除
-        saveProducts();
+        allProducts[activeCategory].splice(index, 1); // 配列から特定の要素を削除
+        saveAllData();
         renderButtons();
     } 
 }
@@ -172,18 +256,18 @@ function addNewProduct() {
     };
 
     // 3. 配列に追加（C#の List.Add ）
-    currentProducts.push(newProduct);
+    allProducts[activeCategory].push(newProduct);
 
     // 4. localStorageに保存して画面を再描画
-    saveProducts();
+    saveAllData();
     renderButtons();
     
     alert(`${name} を追加しました！`);
 }
 
-// 商品リスト専用の保存関数（共通化しておくと楽です）
-function saveProducts() {
-    localStorage.setItem('my_products', JSON.stringify(currentProducts));
+//ボタンデータを保存
+function saveAllData() {
+    localStorage.setItem('my_pos_data', JSON.stringify(allProducts));
 }
 
 function clearData() {
@@ -235,5 +319,71 @@ function addCalcAmount() {
     if (amount > 0) {
         addItem("自由入力", amount); // 既存のaddItem関数を使い回す
         closeCalc();
+    }
+}
+
+//--- タブのリネーム ---
+
+let editingCategoryName = ""; // 操作中のカテゴリ名を保持
+
+// モーダルを開く
+function editCategory(catName) {
+    editingCategoryName = catName;
+    document.getElementById('categoryModalTitle').innerText = `カテゴリ「${catName}」の操作`;
+    document.getElementById('categoryModal').style.display = 'flex';
+}
+
+// モーダルを閉じる
+function closeCategoryModal() {
+    document.getElementById('categoryModal').style.display = 'none';
+}
+
+// 1. 名前変更の実行
+function openCategoryRename() {
+    closeCategoryModal();
+    const oldName = editingCategoryName;
+    const newName = prompt(`「${oldName}」の新しい名前を入力してください`, oldName);
+    
+    if (!newName || newName === oldName) return;
+    if (allProducts[newName]) {
+        alert("その名前は既に使われています");
+        return;
+    }
+
+    // キーの書き換え（コピーして削除）
+    allProducts[newName] = allProducts[oldName];
+    delete allProducts[oldName];
+
+    if (activeCategory === oldName) {
+        activeCategory = newName;
+    }
+
+    saveAllData();
+    renderTabs();
+    renderButtons();
+}
+
+// 2. 削除の実行
+function deleteTargetCategory() {
+    closeCategoryModal();
+    const target = editingCategoryName;
+
+    // 最後の1つは消させないガード
+    if (Object.keys(allProducts).length <= 1) {
+        alert("これ以上カテゴリを削除できません。");
+        return;
+    }
+
+    if (confirm(`カテゴリ「${target}」を削除しますか？\n中の商品もすべて消えます。`)) {
+        delete allProducts[target];
+        
+        // 表示中のカテゴリを消した場合は先頭に移動
+        if (activeCategory === target) {
+            activeCategory = Object.keys(allProducts)[0];
+        }
+
+        saveAllData();
+        renderTabs();
+        renderButtons();
     }
 }

@@ -78,3 +78,15 @@ button {
     margin-top: 10px;
     width: 100%;
 }
+.tab-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 20px;
+    background: #e5e5ea;
+    white-space: nowrap; /* 改行させない */
+    font-weight: bold;
+}
+.tab-btn.active {
+    background: #007aff;
+    color: white;
+}
