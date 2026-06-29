@@ -2,6 +2,7 @@
 
 let editingId = null;
 let total = 0;
+let cart = [];
 let history = JSON.parse(localStorage.getItem('regiHistory')) || [];
 
 // 初期データ（カテゴリ分けした構造）
@@ -217,10 +218,13 @@ function deleteTargetProduct() {
 // 起動時に保存データを復元
 updateDisplay();
 
+// 商品ボタンを押したときに呼ばれる処理
 function addItem(name, price) {
-    const item = { name, price, time: new Date().toLocaleTimeString() };
-    history.push(item);
-    saveAndRender();
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const item = { name, price, time: timeStr };
+    cart.push(item);
+    updateDisplay();
 }
 
 function saveAndRender() {
@@ -235,18 +239,58 @@ function updateDisplay() {
 
     listDiv.innerHTML = '<strong>販売履歴</strong>';
     
-    total = 0;
     history.forEach((item, index) => {
-        total += item.price;
         const div = document.createElement('div');
         div.className = 'history-item';
         div.innerHTML = `<span>${item.time} ${item.name}</span><span>¥${item.price}</span>`;
         listDiv.prepend(div); 
     });
+
+    total = 0;
+    cart.forEach((item) => {
+        total += item.price;
+    });
     
     const totalDisplay = document.getElementById('totalDisplay');
     if (totalDisplay) {
         totalDisplay.innerText = `合計: ¥${total.toLocaleString()}`;
+    }
+}
+
+// お会計を確定する（カートの中身を履歴に合体させて保存）
+function checkout() {
+    if (cart.length === 0) {
+        alert("カートが空っぽです");
+        return;
+    }
+    
+    // カートの内容を履歴の配列と合体させる
+    history = history.concat(cart);
+    
+    // 履歴をローカルストレージに保存
+    localStorage.setItem('regiHistory', JSON.stringify(history));
+    
+    // カートを空にして画面を更新
+    cart = [];
+    updateDisplay();
+    alert("お会計が完了しました！");
+}
+
+// 今の合計をクリア
+function clearCurrentCart() {
+    if (confirm("現在カートに入っている内容を消去しますか？")) {
+        cart = [];
+        updateDisplay();
+    }
+}
+
+// 過去の売上履歴をリセット
+function clearSalesHistory() {
+    if (confirm("これまでの売上履歴をすべて削除しますか？\n（現在カートに入っている合計金額は消えません）")) {
+        history = [];
+        localStorage.setItem('regiHistory', JSON.stringify(history));
+        updateDisplay();
+        alert("売上履歴をリセットしました。");
     }
 }
 
@@ -281,13 +325,6 @@ function addNewProduct() {
 //ボタンデータを保存
 function saveAllData() {
     localStorage.setItem('my_pos_data', JSON.stringify(allProducts));
-}
-
-function clearData() {
-    if(confirm('履歴を削除して合計をリセットしますか？')) {
-        history = [];
-        saveAndRender();
-    }
 }
 
 //---電卓の処理---

@@ -29,7 +29,9 @@
     
 <div class="admin-controls" style="margin-top: 20px; display: grid; gap: 10px;">
     <button class="action-btn" onclick="addNewProduct()" style="background-color: #34c759;">＋ 新しい商品を追加</button>
-    <button class="action-btn" onclick="clearData()">売上履歴をリセット</button>
+    <button class="action-btn" onclick="checkout()" style="background-color: #007aff; font-weight: bold; font-size: 16px;">💸 お会計を確定する</button>
+    <button class="action-btn" onclick="clearCurrentCart()" style="background-color: #ffcc00; color: #000;">🛒 今のカートをクリア</button>
+    <button class="action-btn" onclick="clearSalesHistory()" style="background-color: #ff3b30;">📊 過去の売上履歴をリセット</button>
 </div>
 
 
@@ -77,7 +79,7 @@
 </div>
 
 <div id="appVersion" style="text-align: center; color: #8e8e93; font-size: 12px; margin: 20px 0;">
-    Version 1.0.5
+    Version 1.1.1
 </div>
 
     <script src="script.js"></script>
