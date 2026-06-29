@@ -1,0 +1,20 @@
+{
+  "short_name": "レジ電卓",
+  "name": "カテゴリ対応・POSレジアプリ",
+  "icons": [
+    {
+      "src": "icon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "theme_color": "#5856d6"
+}
