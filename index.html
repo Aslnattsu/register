@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>レジ電卓</title>
     
+    <link rel="manifest" href="./manifest.json">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('PWA登録成功！', reg))
+            .catch(err => console.log('PWA登録失敗...', err));
+        });
+      }
+    </script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
