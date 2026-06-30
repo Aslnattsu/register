@@ -297,35 +297,30 @@ function updateDisplay() {
     }
 
     // 合計金額のすぐ下に「会計中の品目と点数」を表示する
-    let cartListDiv = document.getElementById('cartList');
-    // なければ作る（初回のみ）
-    if (!cartListDiv) {
-        cartListDiv = document.createElement('div');
-        cartListDiv.id = 'cartList';
+    const cartListDiv = document.getElementById('cartList');
+    if (cartListDiv) {
         cartListDiv.style.margin = '10px 0';
         cartListDiv.style.padding = '10px';
         cartListDiv.style.background = '#f9f9f9';
         cartListDiv.style.border = '1px solid #ddd';
         cartListDiv.style.borderRadius = '5px';
-        // 合計表示のすぐ下に挿入
-        totalDisplay.parentNode.insertBefore(cartListDiv, totalDisplay.nextSibling);
-    }
 
-    // カートの中身を画面に描き出す
-    if (cart.length === 0) {
-        cartListDiv.innerHTML = '<span style="color:#8e8e93;">🛒 カートは空っぽです</span>';
-    } else {
-        cartListDiv.innerHTML = '<strong>🛒 会計中の品目</strong>';
-        Object.keys(itemCounts).forEach(name => {
-            const info = itemCounts[name];
-            const itemDiv = document.createElement('div');
-            itemDiv.style.display = 'flex';
-            itemDiv.style.justifyContent = 'space-between';
-            itemDiv.style.marginTop = '5px';
-            itemDiv.innerHTML = `<span>${name} × ${info.count}点</span><span>¥${(info.price * info.count).toLocaleString()}</span>`;
-            cartListDiv.appendChild(itemDiv);
-        });
-    }
+        // カートの中身を画面に描き出す
+        if (cart.length === 0) {
+            cartListDiv.innerHTML = '<span style="color:#8e8e93;">🛒 カートは空っぽです</span>';
+        } else {
+            cartListDiv.innerHTML = '<strong>🛒 会計中の品目</strong>';
+            Object.keys(itemCounts).forEach(name => {
+                const info = itemCounts[name];
+                const itemDiv = document.createElement('div');
+                itemDiv.style.display = 'flex';
+                itemDiv.style.justifyContent = 'space-between';
+                itemDiv.style.marginTop = '5px';
+                itemDiv.innerHTML = `<span>${name} × ${info.count}点</span><span>¥${(info.price * info.count).toLocaleString()}</span>`;
+                cartListDiv.appendChild(itemDiv);
+            });
+        }
+}
 }
 
 // お会計を確定する（カートの中身を履歴に合体させて保存）
