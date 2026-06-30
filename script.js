@@ -234,26 +234,97 @@ function saveAndRender() {
 
 function updateDisplay() {
     const listDiv = document.getElementById('historyList');
-    // もしHTML側に historyList というIDがないとここでエラーになるので注意
     if (!listDiv) return; 
 
+    // 1. 下の「販売履歴」を描画（会計ごとにグループ化して表示）
     listDiv.innerHTML = '<strong>販売履歴</strong>';
     
-    history.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.innerHTML = `<span>${item.time} ${item.name}</span><span>¥${item.price}</span>`;
-        listDiv.prepend(div); 
+    history.forEach((receipt, index) => {
+        // 会計ごとに枠（コンテナ）を作る
+        const receiptDiv = document.createElement('div');
+        
+        // スタイル：太い境界線をつける
+        receiptDiv.style.borderBottom = '3px double #333'; // 二重線（または 2px solid #333 など）
+        receiptDiv.style.padding = '10px 5px';
+        
+        // スタイル：色を交互に変える（奇数番目と偶数番目で背景色を変更）
+        if (index % 2 === 0) {
+            receiptDiv.style.backgroundColor = '#ffffff'; // 白
+        } else {
+            receiptDiv.style.backgroundColor = '#f2f2f7'; // 薄いグレー
+        }
+
+        // 会計のヘッダー（時間と合計金額）
+        const header = document.createElement('div');
+        header.style.fontWeight = 'bold';
+        header.style.color = '#555';
+        header.style.marginBottom = '5px';
+        header.innerText = `🕒 ${receipt.time} のお会計（小計: ¥${receipt.totalPrice.toLocaleString()}）`;
+        receiptDiv.appendChild(header);
+
+        // その会計に含まれる商品たちを並べる
+        receipt.items.forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.style.display = 'flex';
+            itemDiv.style.justifyContent = 'space-between';
+            itemDiv.style.paddingLeft = '10px';
+            itemDiv.style.fontSize = '14px';
+            itemDiv.style.color = '#333';
+            itemDiv.innerHTML = `<span>・${item.name}</span><span>¥${item.price.toLocaleString()}</span>`;
+            receiptDiv.appendChild(itemDiv);
+        });
+
+        listDiv.appendChild(receiptDiv); 
     });
 
     total = 0;
+    const itemCounts = {}; // 商品名ごとの個数を数えるための箱
+
     cart.forEach((item) => {
         total += item.price;
+        // すでに箱にあったら+1、なければ1からスタート
+        if (itemCounts[item.name]) {
+            itemCounts[item.name].count += 1;
+        } else {
+            itemCounts[item.name] = { count: 1, price: item.price };
+        }
     });
     
+    // 合計金額の表示を更新
     const totalDisplay = document.getElementById('totalDisplay');
     if (totalDisplay) {
         totalDisplay.innerText = `合計: ¥${total.toLocaleString()}`;
+    }
+
+    // 合計金額のすぐ下に「会計中の品目と点数」を表示する
+    let cartListDiv = document.getElementById('cartList');
+    // なければ作る（初回のみ）
+    if (!cartListDiv) {
+        cartListDiv = document.createElement('div');
+        cartListDiv.id = 'cartList';
+        cartListDiv.style.margin = '10px 0';
+        cartListDiv.style.padding = '10px';
+        cartListDiv.style.background = '#f9f9f9';
+        cartListDiv.style.border = '1px solid #ddd';
+        cartListDiv.style.borderRadius = '5px';
+        // 合計表示のすぐ下に挿入
+        totalDisplay.parentNode.insertBefore(cartListDiv, totalDisplay.nextSibling);
+    }
+
+    // カートの中身を画面に描き出す
+    if (cart.length === 0) {
+        cartListDiv.innerHTML = '<span style="color:#8e8e93;">🛒 カートは空っぽです</span>';
+    } else {
+        cartListDiv.innerHTML = '<strong>🛒 会計中の品目</strong>';
+        Object.keys(itemCounts).forEach(name => {
+            const info = itemCounts[name];
+            const itemDiv = document.createElement('div');
+            itemDiv.style.display = 'flex';
+            itemDiv.style.justifyContent = 'space-between';
+            itemDiv.style.marginTop = '5px';
+            itemDiv.innerHTML = `<span>${name} × ${info.count}点</span><span>¥${(info.price * info.count).toLocaleString()}</span>`;
+            cartListDiv.appendChild(itemDiv);
+        });
     }
 }
 
@@ -264,10 +335,21 @@ function checkout() {
         return;
     }
     
-    // カートの内容を履歴の配列と合体させる
-    history = history.concat(cart);
+    // 現在の時刻を取得
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     
-    // 履歴をローカルストレージに保存
+    // 1回のお会計の「塊」を作る
+    const receipt = {
+        time: timeStr,
+        items: [...cart], // カートの中身をそのままコピー
+        totalPrice: total // updateDisplayで計算済みの合計金額
+    };
+    
+    // 履歴の配列の「先頭」に追加する（新しいものが上に来るように）
+    history.unshift(receipt);
+    
+    // ローカルストレージに保存
     localStorage.setItem('regiHistory', JSON.stringify(history));
     
     // カートを空にして画面を更新
