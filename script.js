@@ -323,6 +323,9 @@ function updateDisplay() {
 }
 }
 
+//Googleスプレッドシート（GAS）の送信先URL
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwRT-lwehwyqQ8OKEnCD2jpl1qcaA8DTB-4rKRAMGvA7UE7kMfkIABiiz2GY9056KMk/exec";
+
 // お会計を確定する（カートの中身を履歴に合体させて保存）
 function checkout() {
     if (cart.length === 0) {
@@ -334,23 +337,120 @@ function checkout() {
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     
+    // スプレッドシート送信用の日時フォーマット (例: 2026/07/01 12:34)
+    const fullTimestamp = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')} ${timeStr}`;
+    
+    // ユニークな会計ID（現在時刻のミリ秒）
+    const receiptId = Date.now();
+    
     // 1回のお会計の「塊」を作る
     const receipt = {
+        id: receiptId,
         time: timeStr,
         items: [...cart], // カートの中身をそのままコピー
-        totalPrice: total // updateDisplayで計算済みの合計金額
+        totalPrice: total // 合計金額
     };
     
-    // 履歴の配列の「先頭」に追加する（新しいものが上に来るように）
+    // 履歴の配列の「先頭」に追加する
     history.unshift(receipt);
     
     // ローカルストレージに保存
     localStorage.setItem('regiHistory', JSON.stringify(history));
+
+    // Googleスプレッドシートへ裏側でデータを自動送信
+    sendToSpreadsheet(fullTimestamp, receiptId, [...cart]);
     
     // カートを空にして画面を更新
     cart = [];
     updateDisplay();
     alert("お会計が完了しました！");
+}
+
+// アプリ起動時にLocalStorageから「未送信リスト」を読み込む（なければ空っぽ）
+let failedQueue = JSON.parse(localStorage.getItem('regiFailedQueue')) || [];
+
+// アプリ起動時、ちょっと時間を置いてから未送信データの再送を試みる
+window.addEventListener('load', () => {
+    setTimeout(retryFailedPayloads, 3000); // 起動3秒後にチェック
+});
+
+// 🌐 スプレッドシートへデータを飛ばす関数（失敗したらストックする）
+function sendToSpreadsheet(timestamp, receiptId, itemsToSend) {
+    const payload = {
+        timestamp: timestamp,
+        receiptId: receiptId,
+        items: itemsToSend.map(item => ({
+            name: item.name,
+            price: item.price,
+            category: activeCategory
+        }))
+    };
+
+    executePost(payload);
+}
+
+// 実際に通信を行うコア関数
+function executePost(payload) {
+    // オフライン状態なら、通信せずに即ストックへ
+    if (!navigator.onLine) {
+        console.warn("⚠️ オフラインのため、データを未送信リストに保存しました。");
+        queuePayload(payload);
+        return;
+    }
+
+    fetch(GAS_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "text/plain" // GASで一番エラーが起きにくい形式
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => {
+        console.log("スプレッドシートへの自動バックアップに成功しました！");
+        // 送信が成功したら、他にも溜まっている未送信データがあれば再送を試みる
+        retryFailedPayloads();
+    })
+    .catch(error => {
+        console.error("❌ 送信エラーが発生したため、データを未送信リストに保存します:", error);
+        queuePayload(payload);
+    });
+}
+
+// 📦 送信失敗データをLocalStorageにストックする関数
+function queuePayload(payload) {
+    // 重複して同じIDが入らないようにチェック
+    if (!failedQueue.some(p => p.receiptId === payload.receiptId)) {
+        failedQueue.push(payload);
+        localStorage.setItem('regiFailedQueue', JSON.stringify(failedQueue));
+    }
+}
+
+// 🔄 溜まった未送信データをまとめて再送する関数
+function retryFailedPayloads() {
+    if (failedQueue.length === 0) return;
+    if (!navigator.onLine) return; // 依然としてオフラインなら何もしない
+
+    console.log(`🔄 未送信の売上データが ${failedQueue.length} 件あります。再送を試みます...`);
+    
+    // 溜まっているデータを1個ずつ順番に再送
+    const currentQueue = [...failedQueue];
+    failedQueue = []; // 一旦メモリ上を空にして、失敗したやつだけ再度入れ直す
+    localStorage.setItem('regiFailedQueue', JSON.stringify(failedQueue));
+
+    currentQueue.forEach(payload => {
+        fetch(GAS_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            console.log(`✅ 会計ID: ${payload.receiptId} のデータ送信に成功しました！`);
+        })
+        .catch(() => {
+            console.error(`❌ 会計ID: ${payload.receiptId} の再送に失敗。ストックに戻します。`);
+            queuePayload(payload); // 失敗したら再度ストックに戻す
+        });
+    });
 }
 
 // 今の合計をクリア
