@@ -8,13 +8,13 @@ let history = JSON.parse(localStorage.getItem('regiHistory')) || [];
 // 初期データ（カテゴリ分けした構造）
 const defaultData = {
     "Aセット": [
-        { id: 1, name: "食品A", price: 500, color: "#007aff" },
+        { id: 1, name: "食品A", price: 500, color: "#8B7355" },
     ],
     "Bセット": [
-        { id: 101, name: "食品A", price: 1000, color: "#ff9500" },
+        { id: 101, name: "食品A", price: 1000, color: "#C4A482" },
     ],
     "Cセット": [
-        { id: 201, name: "食品A", price: 300, color: "#34c759" },
+        { id: 201, name: "食品A", price: 300, color: "#A88F70" },
     ]
 };
 
@@ -121,7 +121,7 @@ function renderButtons() {
     // 自由入力ボタン
     const calcBtn = document.createElement('button');
     calcBtn.className = 'item-btn';
-    calcBtn.style.backgroundColor = "#5856d6"; // 目立つ紫など
+    calcBtn.style.backgroundColor = "#C78283"; // 目立つ紫など
     calcBtn.innerHTML = `自由入力<br>(電卓)`;
     calcBtn.onclick = openCalc; // 電卓を開く
     grid.appendChild(calcBtn);
@@ -371,31 +371,89 @@ function clearSalesHistory() {
     }
 }
 
-// 新しい商品を追加する関数
-function addNewProduct() {
-    // 1. 入力を受け取る（C#の入力ダイアログ相当）
-    const name = prompt("商品名を入力してください", "商品名称");
-    if (!name) return; // キャンセルなら終了
+// 標準10色を用意
+const uiColors = [
+    "#8B7355", // 01. エスプレッソ（深みのあるブラウン）
+    "#C4A482", // 02. カフェラテ（ミルクブラウン）
+    "#A88F70", // 03. ローストベージュ（白文字がクッキリ見える濃さに調整！）
+    "#A3B19B", // 04. 抹茶ラテ（くすんだセージグリーン）
+    "#738276", // 05. ユーカリ（深みのあるオリーブグリーン）
+    "#D9A066", // 06. キャメル（焼き菓子のようなシナモンオレンジ）
+    "#C78283", // 07. ベイクドベリー（くすんだアンティークピンク）
+    "#8A9A86", // 08. ハーブ（スモーキーなグリーン）
+    "#9A8AA6", // 09. ラベンダーアッシュ（落ち着いたニュアンスパープル）
+    "#9c9c9c"  // 10. クラフト（主張しないマットグレー）
+];
+let selectedColor = uiColors[0]; // デフォルトは1番目の青
 
-    const priceStr = prompt(`${name} の価格を入力してください`, "1000");
-    if (!priceStr) return;
+// 「＋商品追加」ボタンが押されたらここが呼ばれる
+function addNewProduct() {
+    // 入力欄を初期化
+    document.getElementById('newProdName').value = "新商品";
+    document.getElementById('newProdPrice').value = "1000";
+    selectedColor = uiColors[0]; // 青を初期選択
+    
+    // カラーパレットのボタンを生成
+    const paletteDiv = document.getElementById('colorPalette');
+    paletteDiv.innerHTML = "";
+    
+    uiColors.forEach(color => {
+        const cBtn = document.createElement('button');
+        cBtn.type = "button";
+        cBtn.style.backgroundColor = color;
+        cBtn.style.height = "40px";
+        cBtn.style.border = color === selectedColor ? "3px solid #333" : "1px solid #ccc";
+        cBtn.style.borderRadius = "5px";
+        cBtn.style.cursor = "pointer";
+        
+        // 色を選択したときの処理
+        cBtn.onclick = () => {
+            selectedColor = color;
+            // 一旦全部の枠線を普通に戻してから、選んだやつだけ太枠にする
+            Array.from(paletteDiv.children).forEach((btn, idx) => {
+                btn.style.border = uiColors[idx] === selectedColor ? "3px solid #333" : "1px solid #ccc";
+            });
+        };
+        paletteDiv.appendChild(cBtn);
+    });
+
+    // モーダルを表示
+    document.getElementById('addProductModal').style.display = 'flex';
+}
+
+function closeAddProductModal() {
+    document.getElementById('addProductModal').style.display = 'none';
+}
+
+// 「追加する」ボタンを押したときの確定処理
+function submitNewProduct() {
+    const name = document.getElementById('newProdName').value.trim();
+    const priceStr = document.getElementById('newProdPrice').value;
     const price = parseInt(priceStr, 10);
 
-    // 2. 新しい商品オブジェクトを作成
+    if (!name) {
+        alert("商品名を入力してください");
+        return;
+    }
+    if (isNaN(price) || price < 0) {
+        alert("正しい価格を入力してください");
+        return;
+    }
+
+    // 新しい商品オブジェクトを作成
     const newProduct = {
-        id: Date.now(), // 現在時刻を簡易的なIDにする
+        id: Date.now(),
         name: name,
         price: price,
-        color: "#8e8e93" // デフォルトはグレー（後で変えられるようにしても◎）
+        color: selectedColor
     };
 
-    // 3. 配列に追加（C#の List.Add ）
+    // 配列に追加して保存・再描画
     allProducts[activeCategory].push(newProduct);
-
-    // 4. localStorageに保存して画面を再描画
     saveAllData();
     renderButtons();
     
+    closeAddProductModal();
     alert(`${name} を追加しました！`);
 }
 
@@ -512,5 +570,63 @@ function deleteTargetCategory() {
         saveAllData();
         renderTabs();
         renderButtons();
+    }
+}
+
+// --- お釣り計算電卓の処理 ---
+
+let otsuriAzukariInput = "0"; // 預かり金の入力保持
+
+// お釣り電卓を開く
+function openOtsuriCalc() {
+    otsuriAzukariInput = "0";
+    // 現在の会計合計金額（total）をタイトルに小さく表示
+    document.getElementById('otsuriTitle').innerText = `お釣り計算 (合計: ¥${total.toLocaleString()})`;
+    updateOtsuriDisplay();
+    document.getElementById('otsuriModal').style.display = 'flex';
+}
+
+// お釣り電卓を閉じる
+function closeOtsuriModal() {
+    document.getElementById('otsuriModal').style.display = 'none';
+}
+
+// 数字が押されたとき
+function pressOtsuriNum(num) {
+    if (otsuriAzukariInput === "0") {
+        if (num === '00') return; // 最初が0のときは00を押しても意味ない
+        otsuriAzukariInput = num.toString();
+    } else {
+        otsuriAzukariInput += num.toString();
+    }
+    updateOtsuriDisplay();
+}
+
+// クリア（C）が押されたとき
+function clearOtsuriCalc() {
+    otsuriAzukariInput = "0";
+    updateOtsuriDisplay();
+}
+
+// 画面の数値をリアルタイム更新（引き算もここで行う）
+function updateOtsuriDisplay() {
+    const azukariAmount = parseInt(otsuriAzukariInput, 10);
+    
+    // 1. お預かり金額の表示
+    document.getElementById('otsuriAzukari').innerText = `¥${azukariAmount.toLocaleString()}`;
+    
+    // 2. お釣りの計算（預かり金 - カートの合計金額）
+    const otsuri = azukariAmount - total;
+    
+    const otsuriResultDiv = document.getElementById('otsuriResult');
+    if (azukariAmount === 0) {
+        otsuriResultDiv.innerText = "¥0";
+        otsuriResultDiv.style.color = "#ff3b30";
+    } else if (otsuri < 0) {
+        otsuriResultDiv.innerText = `¥-${Math.abs(otsuri).toLocaleString()}`;
+        otsuriResultDiv.style.color = "#ff3b30"; // 足りない時は赤
+    } else {
+        otsuriResultDiv.innerText = `¥${otsuri.toLocaleString()}`;
+        otsuriResultDiv.style.color = "#34c759"; // お釣りがある時は緑
     }
 }
