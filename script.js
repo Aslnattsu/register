@@ -22,19 +22,29 @@ const defaultData = {
 let rawData = localStorage.getItem('my_pos_v2');
 let allProducts;
 
-if (rawData) {
-    allProducts = JSON.parse(rawData);
-} else {
-    // もし古いデータ（配列）が残っていたら「基本」カテゴリに無理やり入れる
-    let oldData = localStorage.getItem('my_products');
-    if (oldData) {
-        allProducts = { "Aセット": JSON.parse(oldData) };
+try {
+    if (rawData) {
+        // 保存されたデータがあればそれを100%信用してロード
+        allProducts = JSON.parse(rawData);
     } else {
+        // 完全に初回だけ、上のdefaultData（商品A）を使って即保存
         allProducts = defaultData;
+        localStorage.setItem('my_pos_v2', JSON.stringify(allProducts));
     }
-    // 新しい形式で即保存
-    localStorage.setItem('my_pos_v2', JSON.stringify(allProducts));
+} catch (e) {
+    // 万が一データが壊れていた場合の安全ガード
+    console.error("デコード失敗のため初期化します:", e);
+    allProducts = defaultData;
 }
+
+// 全ての商品に色情報があるか念のためチェック（バグ防止）
+Object.keys(allProducts).forEach(category => {
+    if (Array.isArray(allProducts[category])) {
+        allProducts[category].forEach(product => {
+            if (!product.color) product.color = "#8B7355";
+        });
+    }
+});
 
 // アクティブなカテゴリをセット
 let activeCategory = Object.keys(allProducts)[0] || "Aセット";
@@ -559,7 +569,7 @@ function submitNewProduct() {
 
 //ボタンデータを保存
 function saveAllData() {
-    localStorage.setItem('my_pos_data', JSON.stringify(allProducts));
+    localStorage.setItem('my_pos_v2', JSON.stringify(allProducts));
 }
 
 //---電卓の処理---
