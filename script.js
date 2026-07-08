@@ -379,10 +379,6 @@ function checkout() {
 // アプリ起動時にLocalStorageから「未送信リスト」を読み込む（なければ空っぽ）
 let failedQueue = JSON.parse(localStorage.getItem('regiFailedQueue')) || [];
 
-// アプリ起動時、ちょっと時間を置いてから未送信データの再送を試みる
-window.addEventListener('load', () => {
-    setTimeout(retryFailedPayloads, 3000); // 起動3秒後にチェック
-});
 
 // 🌐 スプレッドシートへデータを飛ばす関数（失敗したらストックする）
 function sendToSpreadsheet(timestamp, receiptId, itemsToSend) {
@@ -417,8 +413,6 @@ function executePost(payload) {
     })
     .then(response => {
         console.log("スプレッドシートへの自動バックアップに成功しました！");
-        // 送信が成功したら、他にも溜まっている未送信データがあれば再送を試みる
-        retryFailedPayloads();
     })
     .catch(error => {
         console.error("❌ 送信エラーが発生したため、データを未送信リストに保存します:", error);
@@ -435,32 +429,75 @@ function queuePayload(payload) {
     }
 }
 
-// 🔄 溜まった未送信データをまとめて再送する関数
-function retryFailedPayloads() {
-    if (failedQueue.length === 0) return;
-    if (!navigator.onLine) return; // 依然としてオフラインなら何もしない
-
-    console.log(`🔄 未送信の売上データが ${failedQueue.length} 件あります。再送を試みます...`);
+// 🔄 溜まった未送信データを【手動】でまとめて再送する関数
+async function syncFailedQueueManual() {
+    const btn = document.getElementById('syncButton'); // HTML側のボタンID
     
-    // 溜まっているデータを1個ずつ順番に再送
+    // 1. ストックがあるかチェック
+    if (failedQueue.length === 0) {
+        alert("送信する未送信データはありません！✨");
+        return;
+    }
+
+    // 2. ネットに繋がっているかチェック
+    if (!navigator.onLine) {
+        alert("現在ブラウザがオフラインです。インターネットに接続してから再度お試しください。");
+        return;
+    }
+
+    // 3. ボタンを「送信中」にして連打を防止する
+    const originalText = btn ? btn.innerHTML : "データ送信";
+    if (btn) {
+        btn.disabled = true;
+        btn.style.backgroundColor = "#8e8e93";
+        btn.innerHTML = "⏳ 同期中...";
+    }
+
+    console.log(`🔄 未送信の売上データ ${failedQueue.length} 件の手動同期を開始します...`);
+    
+    // 現在のストックをコピーして、LocalStorage側は一旦空にする
     const currentQueue = [...failedQueue];
-    failedQueue = []; // 一旦メモリ上を空にして、失敗したやつだけ再度入れ直す
+    failedQueue = [];
     localStorage.setItem('regiFailedQueue', JSON.stringify(failedQueue));
 
-    currentQueue.forEach(payload => {
-        fetch(GAS_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify(payload)
-        })
-        .then(() => {
-            console.log(`✅ 会計ID: ${payload.receiptId} のデータ送信に成功しました！`);
-        })
-        .catch(() => {
-            console.error(`❌ 会計ID: ${payload.receiptId} の再送に失敗。ストックに戻します。`);
-            queuePayload(payload); // 失敗したら再度ストックに戻す
-        });
-    });
+    let successCount = 0;
+    let failCount = 0;
+
+    // 4. C#のforeachと同じ感覚で、1件ずつ順番に同期を待つ(await)
+    for (const payload of currentQueue) {
+        try {
+            const response = await fetch(GAS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                console.log(`✅ 会計ID: ${payload.receiptId} のデータ送信に成功しました！`);
+                successCount++;
+            } else {
+                throw new Error("GAS側でエラー応答");
+            }
+        } catch (error) {
+            console.error(`❌ 会計ID: ${payload.receiptId} の再送に失敗。ストックに戻します。`, error);
+            queuePayload(payload); // 失敗したやつは自動でストックに逆戻り
+            failCount++;
+        }
+    }
+
+    // 5. ボタンの状態を元に戻す
+    if (btn) {
+        btn.disabled = false;
+        btn.style.backgroundColor = "#007aff";
+        btn.innerHTML = originalText;
+    }
+
+    // 6. 結果をポップアップでお知らせ
+    if (failCount === 0) {
+        alert(`🎉 ストックされていた ${successCount} 件のデータ同期がすべて完了しました！`);
+    } else {
+        alert(`📢 同期が完了しました。\n\n✅ 成功: ${successCount} 件\n⚠️ 失敗: ${failCount} 件\n\n（失敗したデータはストックに残してあります）`);
+    }
 }
 
 // 今の合計をクリア
@@ -572,51 +609,6 @@ function saveAllData() {
     localStorage.setItem('my_pos_v2', JSON.stringify(allProducts));
 }
 
-//---電卓の処理---
-
-let calcInput = "0"; // 入力中の数値を文字列で保持
-
-// 電卓を開く
-function openCalc() {
-    calcInput = "0";
-    updateCalcDisplay();
-    document.getElementById('calcModal').style.display = 'flex';
-}
-
-function closeCalc() {
-    document.getElementById('calcModal').style.display = 'none';
-}
-
-// 数字ボタンを押したとき
-function pressNum(num) {
-    if (calcInput === "0") {
-        calcInput = num.toString();
-    } else {
-        calcInput += num.toString();
-    }
-    updateCalcDisplay();
-}
-
-// Cボタン（クリア）
-function clearCalc() {
-    calcInput = "0";
-    updateCalcDisplay();
-}
-
-// 表示の更新
-function updateCalcDisplay() {
-    document.getElementById('calcDisplay').innerText = `¥${parseInt(calcInput).toLocaleString()}`;
-}
-
-// 確定して売上に追加
-function addCalcAmount() {
-    const amount = parseInt(calcInput);
-    if (amount > 0) {
-        addItem("自由入力", amount); // 既存のaddItem関数を使い回す
-        closeCalc();
-    }
-}
-
 //--- タブのリネーム ---
 
 let editingCategoryName = ""; // 操作中のカテゴリ名を保持
@@ -680,63 +672,5 @@ function deleteTargetCategory() {
         saveAllData();
         renderTabs();
         renderButtons();
-    }
-}
-
-// --- お釣り計算電卓の処理 ---
-
-let otsuriAzukariInput = "0"; // 預かり金の入力保持
-
-// お釣り電卓を開く
-function openOtsuriCalc() {
-    otsuriAzukariInput = "0";
-    // 現在の会計合計金額（total）をタイトルに小さく表示
-    document.getElementById('otsuriTitle').innerText = `お釣り計算 (合計: ¥${total.toLocaleString()})`;
-    updateOtsuriDisplay();
-    document.getElementById('otsuriModal').style.display = 'flex';
-}
-
-// お釣り電卓を閉じる
-function closeOtsuriModal() {
-    document.getElementById('otsuriModal').style.display = 'none';
-}
-
-// 数字が押されたとき
-function pressOtsuriNum(num) {
-    if (otsuriAzukariInput === "0") {
-        if (num === '00') return; // 最初が0のときは00を押しても意味ない
-        otsuriAzukariInput = num.toString();
-    } else {
-        otsuriAzukariInput += num.toString();
-    }
-    updateOtsuriDisplay();
-}
-
-// クリア（C）が押されたとき
-function clearOtsuriCalc() {
-    otsuriAzukariInput = "0";
-    updateOtsuriDisplay();
-}
-
-// 画面の数値をリアルタイム更新（引き算もここで行う）
-function updateOtsuriDisplay() {
-    const azukariAmount = parseInt(otsuriAzukariInput, 10);
-    
-    // 1. お預かり金額の表示
-    document.getElementById('otsuriAzukari').innerText = `¥${azukariAmount.toLocaleString()}`;
-    
-    // 2. お釣りの計算（預かり金 - カートの合計金額）
-    const otsuri = azukariAmount - total;
-    
-    const otsuriResultDiv = document.getElementById('otsuriResult');
-    if (azukariAmount === 0) {
-        otsuriResultDiv.innerText = "¥0";
-        otsuriResultDiv.style.color = "#ff3b30";
-    } else if (otsuri < 0) {
-        otsuriResultDiv.innerText = `¥-${Math.abs(otsuri).toLocaleString()}`;
-        otsuriResultDiv.style.color = "#ff3b30"; // 足りない時は赤
-    } else {
-        otsuriResultDiv.innerText = `¥${otsuri.toLocaleString()}`;
-        otsuriResultDiv.style.color = "#34c759"; // お釣りがある時は緑
     }
 }
